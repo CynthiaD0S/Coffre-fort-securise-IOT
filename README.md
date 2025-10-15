@@ -23,21 +23,22 @@ L’objectif est de simuler un **système d’accès intelligent** avec double v
 
 ## ✅ 1. Déclenchement et autorisation initiale (entrée réseau)
 
-- L’utilisateur appuie sur un **bouton poussoir** connecté à l’ESP32.  
-- L’ESP32 publie un message MQTT sur `acces/demande`.  
+- L’utilisateur appuie sur un **bouton poussoir** connecté à l’ESP32.
+- L’ESP32 publie un message MQTT sur `acces/demande`.
 - Un **script Python** (sur PC ou serveur) écoute ce topic et décide :
   - Autorisation ou refus (ex. via reconnaissance faciale, base de données…)
   - Publie la réponse sur `acces/autorisation` (`{"autorise": true}` ou `false`).
 
 📡 L’ESP32 reçoit la réponse :
-- ✅ Si autorisé → LED orange allumée → passage à l’étape suivante  
+
+- ✅ Si autorisé → LED orange allumée → passage à l’étape suivante
 - ❌ Si refus → LED rouge ou buzzer → fin du processus.
 
 ---
 
 ## ✅ 2. Validation locale du code PIN (entrée physique)
 
-- Si autorisation donnée, l’ESP32 active un **clavier matriciel** pour la saisie du code PIN.  
+- Si autorisation donnée, l’ESP32 active un **clavier matriciel** pour la saisie du code PIN.
 - Une fois le code saisi :
   - L’ESP32 publie le code sur `acces/code`
   - Le script Python vérifie le code et renvoie une validation sur `acces/validation` (`true` / `false`)
@@ -65,6 +66,7 @@ L’objectif est de simuler un **système d’accès intelligent** avec double v
   - Ou un message MQTT sur `acces/log` pour archivage
 
 Contenu du message :
+
 - 📇 Identifiant utilisateur (ou image si reconnaissance faciale)
 - 🕒 Horodatage
 - 🟢 Résultat (autorisé / refusé)
@@ -73,49 +75,51 @@ Contenu du message :
 
 ## 🧾 Récapitulatif
 
-| Étape                                | Type                   | Technologie                           |
-|--------------------------------------|-------------------------|---------------------------------------|
-| 1. Déclenchement                    | Entrée réseau           | Bouton ESP32 → MQTT                   |
-| 2. Validation code PIN             | Entrée physique + MQTT | Clavier matriciel + MQTT aller/retour |
-| 3. Action physique locale          | Sortie physique         | Servomoteur + LED                     |
-| 4. Notification                    | Sortie réseau           | Email ou MQTT log                     |
+| Étape                     | Type                   | Technologie                           |
+| ------------------------- | ---------------------- | ------------------------------------- |
+| 1. Déclenchement          | Entrée réseau          | Bouton ESP32 → MQTT                   |
+| 2. Validation code PIN    | Entrée physique + MQTT | Clavier matriciel + MQTT aller/retour |
+| 3. Action physique locale | Sortie physique        | Servomoteur + LED                     |
+| 4. Notification           | Sortie réseau          | Email ou MQTT log                     |
 
 ---
 
 ## 🧰 Matériel utilisé
 
-- 🧠 ESP32 DevKit  
-- 🟢 Bouton poussoir  
-- ⌨️ Clavier matriciel 4x4  
-- 🔧 Servomoteur SG90 (ou équivalent)  
-- 🟡 LED (orange, verte, rouge)  
-- 📡 Broker MQTT (ex. Mosquitto ou Adafruit IO)  
-- 🐍 Python pour autorisation / validation / notification  
+- 🧠 ESP32 DevKit
+- 🟢 Bouton poussoir
+- ⌨️ Clavier matriciel 4x4
+- 🔧 Servomoteur SG90 (ou équivalent)
+- 🟡 LED (orange, verte, rouge)
+- 📡 Broker MQTT (ex. Mosquitto ou Adafruit IO)
+- 🐍 Python pour autorisation / validation / notification
 - 📧 Service SMTP (Gmail ou autre)
 
 ---
 
 ## 🕹️ Exemple de topics MQTT
 
-| Topic                | Direction                  | Message Exemple                 |
-|-----------------------|-----------------------------|----------------------------------|
-| `acces/demande`       | ESP32 → Serveur             | `{ "id": "porte1" }`            |
-| `acces/autorisation`  | Serveur → ESP32             | `{ "autorise": true }`         |
-| `acces/code`          | ESP32 → Serveur             | `{ "code": "1234" }`           |
-| `acces/validation`    | Serveur → ESP32             | `{ "valide": true }`          |
-| `acces/log`           | ESP32 ou Serveur → Gestion | `{"user":"ID1","statut":"ok"}` |
+| Topic                | Direction                  | Message Exemple                |
+| -------------------- | -------------------------- | ------------------------------ |
+| `acces/demande`      | ESP32 → Serveur            | `{ "id": "porte1" }`           |
+| `acces/autorisation` | Serveur → ESP32            | `{ "autorise": true }`         |
+| `acces/code`         | ESP32 → Serveur            | `{ "code": "1234" }`           |
+| `acces/validation`   | Serveur → ESP32            | `{ "valide": true }`           |
+| `acces/log`          | ESP32 ou Serveur → Gestion | `{"user":"ID1","statut":"ok"}` |
 
 ---
 
 ## 🧑‍💻 Installation rapide
 
 ### 📌 Côté ESP32
-- Programmer avec Arduino IDE ou PlatformIO  
-- Connecter bouton, clavier, LED, servo  
-- Configurer Wi-Fi + MQTT broker  
+
+- Programmer avec Arduino IDE ou PlatformIO
+- Connecter bouton, clavier, LED, servo
+- Configurer Wi-Fi + MQTT broker
 - Publier/s’abonner aux topics ci-dessus.
 
 ### 🐍 Côté Python
+
 - Installer les dépendances :
   ```bash
   pip install paho-mqtt
@@ -129,16 +133,22 @@ Contenu du message :
 
 ## ✨ Améliorations possibles
 
-- 🔐 Gestion des tentatives et verrouillage temporaire  
-- 🕒 Horodatage NTP  
-- 📲 Ajout de Bluetooth ou badge RFID  
-- 🌐 Dashboard de supervision des accès  
+- 🔐 Gestion des tentatives et verrouillage temporaire
+- 🕒 Horodatage NTP
+- 📲 Ajout de Bluetooth ou badge RFID
+- 🌐 Dashboard de supervision des accès
 - 📥 Logs stockés en base de données
 
 ---
 
 ## 🧑‍🔬 Auteurs
 
-- 💻 Projet POC IoT ESP32 – Contrôle d’accès  
-- 🌐 MQTT + Python + ESP32  
+- 💻 Projet POC IoT ESP32 – Contrôle d’accès
+- 🌐 MQTT + Python + ESP32
 - 🛠️ Démo académique pour systèmes distribués IoT
+
+## Ressources
+
+[MQTT Avec Arduino](https://arduino.blaisepascal.fr/mqtt-avec-arduino/)
+[Adafruit MQTT](https://learn.adafruit.com/mqtt-adafruit-io-and-you/intro-to-adafruit-mqtt)
+[Librairie Adafruit](https://github.com/adafruit/Adafruit_MQTT_Library/tree/master/examples)
