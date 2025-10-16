@@ -9,15 +9,15 @@
 #define pinButton 4
 #define pinLed 2
 // id pour se connecter au wifi de l'école
-#define WLAN_SSID "Meteor-29EB4F93"
-#define WLAN_PASS "xxxxxxx"
+#define WLAN_SSID "user"
+#define WLAN_PASS "mdp"
 
 #define MQTT_SERVER "io.adafruit.com"
 #define MQTT_SERVERPORT 1883
 
 // serveur MQTT
 #define MQTT_USERNAME "user"
-#define MQTT_KEY "....."
+#define MQTT_KEY "key"
 
 #define USE_I2C
 
