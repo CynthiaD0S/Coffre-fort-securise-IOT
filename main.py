@@ -5,19 +5,34 @@ import time
 MQTT_SERVER = "io.adafruit.com"
 MQTT_PORT = 1883
 MQTT_USERNAME = "user"
-MQTT_KEY = "key"
+MQTT_KEY = "mdp"
+
+CORRECT_CODE = "1234" 
 
 # Topics MQTT
 TOPIC_BUTTON = f"{MQTT_USERNAME}/feeds/iot.access-by-button"
 TOPIC_AUTHORIZATION = f"{MQTT_USERNAME}/feeds/iot.authorization"
 
+### AJOUTS pour le code PIN ###
+TOPIC_CODE_RECEIVED = f"{MQTT_USERNAME}/feeds/iot.access-by-code"
+TOPIC_AUTHORIZATION_CODE = f"{MQTT_USERNAME}/feeds/iot.authorization-code"
+### FIN DES AJOUTS ###
+
+
 # Callbacks MQTT
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connecté au serveur MQTT Adafruit IO")
+        
         # S'abonner au topic du bouton
         client.subscribe(TOPIC_BUTTON)
         print(f"Abonné à: {TOPIC_BUTTON}")
+
+        # S'abonner au topic du code
+        client.subscribe(TOPIC_CODE_RECEIVED)
+        print(f"Abonné à: {TOPIC_CODE_RECEIVED}")
+
+        
     else:
         print(f"Échec de connexion. Code: {rc}")
 
@@ -34,10 +49,25 @@ def on_message(client, userdata, msg):
         
         if reponse == 'o' or reponse == 'oui':
             client.publish(TOPIC_AUTHORIZATION, "true")
-            print("Autorisation envoyée: true")
+            print("Autorisation (bouton) envoyée: true")
         else:
             client.publish(TOPIC_AUTHORIZATION, "false")
-            print("Autorisation refusée: false")
+            print("Autorisation (bouton) refusée: false")
+
+    ### AJOUT: Gérer la réception du code PIN ###
+    elif msg.topic == TOPIC_CODE_RECEIVED:
+        print(f"Code reçu: {message}")
+        
+        # Vérifier si le code est correct
+        if message == CORRECT_CODE:
+            print("Code correct!")
+            client.publish(TOPIC_AUTHORIZATION_CODE, "true")
+            print("Autorisation (code) envoyée: true")
+        else:
+            print("Code incorrect!")
+            client.publish(TOPIC_AUTHORIZATION_CODE, "false")
+            print("Autorisation (code) refusée: false")
+    ### FIN AJOUT ###
 
 def on_publish(client, userdata, mid):
     print("Message publié avec succès")
@@ -62,7 +92,7 @@ try:
     client.connect(MQTT_SERVER, MQTT_PORT, 60)
     
     # Boucle principale
-    print("\nEn attente de messages... (Ctrl+C pour quitter)\n")
+    print(f"\nEn attente de messages...")
     client.loop_forever()
     
 except KeyboardInterrupt:
