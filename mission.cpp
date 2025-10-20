@@ -50,18 +50,17 @@ void setup() {
         while (time(nullptr) < 100000) delay(100);
         msg.timestamp = time(nullptr);
 
-          bool accesAutorise = true;  // tu peux changer selon ton autre code
-        if (accesAutorise) {
-            sendEmail("autorisé");
-        } else {
-            sendEmail("refusé");
-        }
-    
-
-
-
-    smtp.send(msg);
+         void gererAcces(bool accesAutorise) {
+    if (accesAutorise) {
+               sendEmail("autorisé");
+    } else {
+        
+        sendEmail("refusé");
     }
+}
+    smtp.send(msg);
+}
+    
 }
 
 void loop() {}
