@@ -62,9 +62,8 @@ void gererAcces(String status, String id_user) {
         "<p>Bonjour,</p>"
         "<p>Un accès au coffre-fort a été enregistré.</p>"
         "<p>Détails: </p>"
-        "<p><b>Accès :</b> " +
-        status + "le : " + date + " à " + heure +
-        "</p>"
+        "<p> ID de l'utilisateur :  " + id_user + " </p>"
+        "<p> Connexion le : " + date + " à " + heure + "</p>"
         "<p>Cordialement,</p>"
         "<p>Le système de surveillance du coffre-fort</p>"
         "</body></html>"
@@ -75,7 +74,8 @@ void gererAcces(String status, String id_user) {
         "<p>Bonjour,</p>"
         "<p>Une tentative d'accès au coffre-fort a été refusée.</p>"
         "<p>Détails: </p>"
-        "<p><b>Accès :</b> ID de l'utilisateur : " + id_user + " le : " + date + " à " + heure + "</p>"
+        "<p> ID de l'utilisateur :  " + id_user + " </p>" 
+        "<p> Connexion le : " + date + " à " + heure + "</p>"
         "<p>Cordialement,</p>"
         "<p>Le système de surveillance du coffre-fort</p>"
         "</body></html>"
