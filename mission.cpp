@@ -30,7 +30,7 @@ void sendEmail(String accesStatus) {
     if (!smtp.isConnected()) return;
 }
 
-void gererAcces(String status) {
+void gererAcces(String status, String id_user) {
     ssl_client.setInsecure();
 
     auto statusCallback = [](SMTPStatus status) {
@@ -47,24 +47,41 @@ void gererAcces(String status) {
     }
 
     String dateTime = getDateTime();
+    int espaceIndex = dateTime.indexOf(' ');
+    String date = dateTime.substring(0, espaceIndex);
+    String heure = dateTime.substring(espaceIndex + 1);
 
     SMTPMessage msg;
     msg.headers.add(rfc822_from, "coffre fort IoT <t2224295@gmail.com>");
     msg.headers.add(rfc822_to, "Recipient <a22497752@gmail.com>");
     msg.headers.add(rfc822_subject, "Accès coffre fort");
     msg.text.body("This is a plain text message.");
+    if (status == "Autorisé") {
     msg.html.body(
         "<html><body>"
         "<p>Bonjour,</p>"
         "<p>Un accès au coffre-fort a été enregistré.</p>"
         "<p>Détails: </p>"
         "<p><b>Accès :</b> " +
-        status + "<b> le :</b> " + dateTime +
+        status + "le : " + date + " à " + heure +
         "</p>"
         "<p>Cordialement,</p>"
         "<p>Le système de surveillance du coffre-fort</p>"
-        "</body></html>");
-
+        "</body></html>"
+    );
+    } else{
+         msg.html.body(
+        "<html><body>"
+        "<p>Bonjour,</p>"
+        "<p>Une tentative d'accès au coffre-fort a été refusée.</p>"
+        "<p>Détails: </p>"
+        "<p><b>Accès :</b> ID de l'utilisateur : " + id_user + " le : " + date + " à " + heure + "</p>"
+        "<p>Cordialement,</p>"
+        "<p>Le système de surveillance du coffre-fort</p>"
+        "</body></html>"
+    );
+}
+    
     msg.timestamp = time(nullptr);
     smtp.send(msg);
 }
@@ -85,8 +102,8 @@ void setup() {
 }
 
 void loop() {
-    if (i == 1) {
-        gererAcces("Autorisé");
-    }
-    i++;
+   // if (i == 1) {
+     //   gererAcces("Autorisé");
+    //}
+    //i++;
 }
