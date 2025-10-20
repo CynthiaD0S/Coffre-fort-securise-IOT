@@ -39,17 +39,25 @@ void gererAcces(String status) {
 
     smtp.connect("smtp.gmail.com", 465, statusCallback);
 
+    SMTPMessage msg;
+
     if (smtp.isConnected()) {
         smtp.authenticate("t2224295@gmail.com", "pdao hstb zomy paii", readymail_auth_password);
 
+        configTime(0, 0, "pool.ntp.org");
+        while (time(nullptr) < 100000) delay(100);
+        msg.timestamp = time(nullptr);
+
+        smtp.send(msg);
+    }
+
         String dateTime = getDateTime();
 
-        SMTPMessage msg;
+        
         msg.headers.add(rfc822_from, "ReadyMail <t2224295@gmail.com>");
         msg.headers.add(rfc822_to, "Recipient <a22497752@gmail.com>");
         msg.headers.add(rfc822_subject, "Accès coffre fort");
         msg.text.body("This is a plain text message.");
-        msg.html.body("<html><body><h1>Accès " + status + "</h1><p>Envoyé à : " + dateTime + "</p></body></html>");
         msg.html.body(
         "<html><body>"
         "<p><b>Envoyé à :</b> " "</p>"
@@ -57,12 +65,7 @@ void gererAcces(String status) {
         "<p><b>Heure :</b> " + dateTime + "</p>"
         "</body></html>"
         );
-        configTime(0, 0, "pool.ntp.org");
-        while (time(nullptr) < 100000) delay(100);
-        msg.timestamp = time(nullptr);
-
-        smtp.send(msg);
-    }
+        
 }
 
 void setup() {
@@ -82,7 +85,7 @@ void setup() {
 
 void loop() {
     if (i == 1) {
-        gererAcces("Accès autorisé");
+        gererAcces("Autorisé");
     }
     i++;
 }
