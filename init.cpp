@@ -1,3 +1,4 @@
+#include <ESP32Servo.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
 #include <WiFi.h>
@@ -22,6 +23,10 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // boutton
 #define PIN_BUTTON 4
 
+// servomoteur
+#define PIN_SG90 22  // Broche de signal
+Servo sg90;
+
 // led rgb
 const int PIN_RED = 19;
 const int PIN_GREEN = 13;
@@ -43,7 +48,8 @@ Keypad keypad = Keypad(makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_N
 
 // machine à états
 enum State {
-    STATE_IDLE,                 // état initial en attente d'authentification
+    STATE_IDLE,  // état initial en attente d'authentification
+    STATE_ENTERING_ID,
     STATE_WAITING_BUTTON_AUTH,  // attente validation par le serveur
     STATE_ENTERING_CODE,        // attente code de l'user
     STATE_WAITING_CODE_AUTH,    // attente validation du code
@@ -68,6 +74,7 @@ Adafruit_MQTT_Subscribe authorizationCodeFeed = Adafruit_MQTT_Subscribe(&mqtt, A
 int previousButtonState = LOW;
 String currentCode = "";
 String inputCode = "";
+String inputID = "";
 
 unsigned long stateStartTime = 0;
 const unsigned long TIMEOUT_DURATION = 30000;
@@ -175,20 +182,101 @@ void stateIdle() {
 
     if (currentButtonState == HIGH && previousButtonState == LOW) {
         Serial.println("Bouton pressé");
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        if (buttonFeed.publish("1")) {
-            Serial.println("Demande envoyée");
-            lcd.print("Attente reponse...");
-            ledWaiting();
-            changeState(STATE_WAITING_BUTTON_AUTH);
-        } else {
-            Serial.println("Erreur envoi");
-            lcd.print("Erreur d'envoie");
-            changeState(STATE_ERROR);
-        }
+        changeState(STATE_ENTERING_ID);
     }
     previousButtonState = currentButtonState;
+}
+
+void stateEnterID() {
+    if (previousState != STATE_ENTERING_ID) {
+        inputID = "";  // On utilise inputID
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Entrez ID (4):");
+        lcd.setCursor(0, 1);
+        lcd.print("C=OK E=Effacer");
+        previousState = STATE_ENTERING_ID;
+    }
+
+    char key = keypad.getKey();
+
+    if (key) {
+        if (key == 'C') {  // Validation
+            if (inputID.length() == 4) {
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("Envoi ID...");
+
+                // On envoie l'ID sur le feed du bouton
+                if (buttonFeed.publish(inputID.c_str())) {
+                    Serial.print("ID envoyé: ");
+                    Serial.println(inputID);
+                    lcd.setCursor(0, 1);
+                    lcd.print("Attente verif.");
+                    ledWaiting();
+                    inputID = "";                            // Vider l'ID après envoi
+                    changeState(STATE_WAITING_BUTTON_AUTH);  // On attend la réponse
+                } else {
+                    Serial.println("Erreur envoi ID");
+                    inputID = "";
+                    changeState(STATE_ERROR);
+                }
+            } else {
+                // Message d'erreur si l'ID n'a pas 4 chiffres
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("ID: ");
+                lcd.setCursor(4, 0);
+                for (int i = 0; i < inputID.length(); i++) {
+                    lcd.print("*");
+                }
+                lcd.setCursor(0, 1);
+                lcd.print("ID de 4 chiffres");
+                delay(2000);
+
+                // Ré-afficher l'écran de saisie
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("ID: ");
+                lcd.setCursor(4, 0);
+                for (int i = 0; i < inputID.length(); i++) {
+                    lcd.print("*");
+                }
+                lcd.setCursor(0, 1);
+                lcd.print("C=OK E=Effacer");
+            }
+
+        } else if (key == 'E') {  // Effacer
+            inputID = "";
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("ID efface:");
+            lcd.setCursor(0, 1);
+            lcd.print("C=OK E=Effacer");
+            delay(1000);
+
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("ID: ");
+            lcd.setCursor(0, 1);
+            lcd.print("C=OK E=Effacer");
+
+        } else if ((key >= '0' && key <= '9') && (inputID.length() < 4)) {
+            // Ajout d'un chiffre à l'ID
+            inputID += key;
+            lcd.setCursor(4, 0);
+            for (int i = 0; i < inputID.length(); i++) {
+                lcd.print("*");
+            }
+        }
+    }
+
+    // Gestion du timeout
+    if ((millis() - stateStartTime) > TIMEOUT_DURATION) {
+        Serial.println("Timeout lors de la saisie ID");
+        inputID = "";
+        changeState(STATE_ERROR);
+    }
 }
 
 // WAITING_BUTTON_AUTH
@@ -316,6 +404,7 @@ void stateAccessGranted() {
     ledAuthorize();
 
     // envoi mail et servomoteur
+    servomoteurOpen();
     delay(DISPLAY_DURATION);
     changeState(STATE_IDLE);
 }
@@ -350,6 +439,20 @@ void stateError() {
     changeState(STATE_IDLE);
 }
 
+void servomoteurOpen() {
+    // Position initiale
+    sg90.write(0);
+    delay(500);
+
+    // Rotation lente de 0° à 90°
+    for (int angle = 0; angle <= 90; angle++) {
+        sg90.write(angle);
+        delay(30);  // ralentit le mouvement (20–40 ms = fluide)
+    }
+
+    sg90.detach();
+}
+
 void setup() {
     Serial.begin(115200);
 
@@ -379,6 +482,10 @@ void setup() {
     mqtt.subscribe(&authorizationCodeFeed);
 
     stateStartTime = millis();
+
+    // servomoteur
+    sg90.setPeriodHertz(50);           // Fréquence PWM pour le SG90
+    sg90.attach(PIN_SG90, 500, 2400);  // Impulsions min et max (µs)
 }
 
 void loop() {
@@ -396,7 +503,9 @@ void loop() {
         case STATE_IDLE:
             stateIdle();
             break;
-
+        case STATE_ENTERING_ID:
+            stateEnterID();
+            break;
         case STATE_WAITING_BUTTON_AUTH:
             stateWaitingButtonAuth();
             break;
