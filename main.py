@@ -1,65 +1,79 @@
 import paho.mqtt.client as mqtt
-import time
+import sys  
 
-# Configuration Adafruit IO
+# --- Configuration Adafruit IO ---
 MQTT_SERVER = "io.adafruit.com"
 MQTT_PORT = 1883
-MQTT_USERNAME = "user"
-MQTT_KEY = "mdp"
+MQTT_USERNAME = "user"  
+MQTT_KEY = "mdp"     
 
-CORRECT_CODE = "1234" 
-
-# Topics MQTT
+# --- Topics MQTT ---
 TOPIC_BUTTON = f"{MQTT_USERNAME}/feeds/iot.access-by-button"
 TOPIC_AUTHORIZATION = f"{MQTT_USERNAME}/feeds/iot.authorization"
-
-### AJOUTS pour le code PIN ###
 TOPIC_CODE_RECEIVED = f"{MQTT_USERNAME}/feeds/iot.access-by-code"
 TOPIC_AUTHORIZATION_CODE = f"{MQTT_USERNAME}/feeds/iot.authorization-code"
-### FIN DES AJOUTS ###
+
+def charger_lignes_fichier_en_set(nom_fichier):
+    """
+    Ouvre un fichier, lit chaque ligne, enlève les espaces/sauts de ligne
+    et retourne un 'set' (ensemble) pour une recherche rapide.
+    """
+    lignes_set = set()
+    try:
+        with open(nom_fichier, 'r') as f:
+            for ligne in f:
+                lignes_set.add(ligne.strip()) # .strip() est crucial
+        
+        print(f"Fichier {nom_fichier} chargé: {lignes_set}")
+        return lignes_set
+        
+    except FileNotFoundError:
+        print(f"ERREUR FATALE: Le fichier {nom_fichier} est introuvable.")
+        return None # Retourne None si le fichier n'existe pas
 
 
-# Callbacks MQTT
+IDS_AUTORISES = charger_lignes_fichier_en_set("liste_id_auto.txt")
+CODES_AUTORISES = charger_lignes_fichier_en_set("code_auto.txt")
+
+# Vérifier si les fichiers ont été chargés
+if IDS_AUTORISES is None or CODES_AUTORISES is None:
+    print("Un ou plusieurs fichiers de configuration sont manquants. Arrêt du script.")
+    sys.exit(1) # Quitte le programme
+
+# --- Callbacks MQTT ---
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connecté au serveur MQTT Adafruit IO")
-        
-        # S'abonner au topic du bouton
+        # S'abonner aux topics
         client.subscribe(TOPIC_BUTTON)
         print(f"Abonné à: {TOPIC_BUTTON}")
-
-        # S'abonner au topic du code
         client.subscribe(TOPIC_CODE_RECEIVED)
         print(f"Abonné à: {TOPIC_CODE_RECEIVED}")
-
-        
     else:
         print(f"Échec de connexion. Code: {rc}")
 
 def on_message(client, userdata, msg):
-    message = msg.payload.decode()
+    message = msg.payload.decode().strip() 
     print(f"\nMessage reçu sur {msg.topic}: {message}")
     
-    # Si on reçoit un appui sur le bouton
-    if msg.topic == TOPIC_BUTTON and message == "1":
-        print("Bouton appuyé détecté!")
+    if msg.topic == TOPIC_BUTTON:
+        id_recu = message
+        print(f"Demande d'accès reçue avec l'ID: {id_recu}")
         
-        # Demander l'autorisation à l'utilisateur
-        reponse = input("Autoriser l'accès? (o/n): ").lower()
-        
-        if reponse == 'o' or reponse == 'oui':
+        if id_recu in IDS_AUTORISES:
+            print(f"ID {id_recu} est AUTORISÉ.")
             client.publish(TOPIC_AUTHORIZATION, "true")
-            print("Autorisation (bouton) envoyée: true")
+            print("Autorisation (ID) envoyée: true")
         else:
+            print(f"ID {id_recu} est REFUSÉ.")
             client.publish(TOPIC_AUTHORIZATION, "false")
-            print("Autorisation (bouton) refusée: false")
+            print("Autorisation (ID) refusée: false")
 
-    ### AJOUT: Gérer la réception du code PIN ###
     elif msg.topic == TOPIC_CODE_RECEIVED:
-        print(f"Code reçu: {message}")
+        code_recu = message
+        print(f"Code reçu: {code_recu}")
         
-        # Vérifier si le code est correct
-        if message == CORRECT_CODE:
+        if code_recu in CODES_AUTORISES:
             print("Code correct!")
             client.publish(TOPIC_AUTHORIZATION_CODE, "true")
             print("Autorisation (code) envoyée: true")
@@ -67,7 +81,6 @@ def on_message(client, userdata, msg):
             print("Code incorrect!")
             client.publish(TOPIC_AUTHORIZATION_CODE, "false")
             print("Autorisation (code) refusée: false")
-    ### FIN AJOUT ###
 
 def on_publish(client, userdata, mid):
     print("Message publié avec succès")
@@ -76,22 +89,17 @@ def on_disconnect(client, userdata, rc):
     if rc != 0:
         print("Déconnexion inattendue. Reconnexion...")
 
-# Créer le client MQTT
 client = mqtt.Client()
 client.username_pw_set(MQTT_USERNAME, MQTT_KEY)
 
-# Assigner les callbacks
 client.on_connect = on_connect
 client.on_message = on_message
 client.on_publish = on_publish
 client.on_disconnect = on_disconnect
 
-# Connexion au serveur
 print(f"Connexion à {MQTT_SERVER}...")
 try:
     client.connect(MQTT_SERVER, MQTT_PORT, 60)
-    
-    # Boucle principale
     print(f"\nEn attente de messages...")
     client.loop_forever()
     
