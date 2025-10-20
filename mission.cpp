@@ -39,33 +39,39 @@ void gererAcces(String status) {
 
     smtp.connect("smtp.gmail.com", 465, statusCallback);
 
-    SMTPMessage msg;
+    
 
     if (smtp.isConnected()) {
         smtp.authenticate("t2224295@gmail.com", "pdao hstb zomy paii", readymail_auth_password);
 
         configTime(0, 0, "pool.ntp.org");
         while (time(nullptr) < 100000) delay(100);
-        msg.timestamp = time(nullptr);
+       
 
-        smtp.send(msg);
+    
     }
 
         String dateTime = getDateTime();
 
-        
-        msg.headers.add(rfc822_from, "ReadyMail <t2224295@gmail.com>");
+        SMTPMessage msg;
+        msg.headers.add(rfc822_from, "coffre fort IoT <t2224295@gmail.com>");
         msg.headers.add(rfc822_to, "Recipient <a22497752@gmail.com>");
         msg.headers.add(rfc822_subject, "Accès coffre fort");
         msg.text.body("This is a plain text message.");
         msg.html.body(
         "<html><body>"
-        "<p><b>Envoyé à :</b> " "</p>"
+        "<p>Bonjour,</p>"
+        "<p>Un accès au coffre-fort a été enregistré.</p>"
+        "<p>Détails: </p>"
         "<p><b>Accès :</b> " + status + "</p>"
         "<p><b>Heure :</b> " + dateTime + "</p>"
+        "<p>Cordialement,</p>"
+        "<p>Système de surveillance du coffre-fort</p>"
         "</body></html>"
         );
-        
+
+         msg.timestamp = time(nullptr);
+         smtp.send(msg);
 }
 
 void setup() {
