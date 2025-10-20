@@ -8,8 +8,8 @@
 #define ENABLE_DEBUG
 #include <ReadyMail.h>
 
-#define WLAN_SSID "iPhone de Cynthia"
-#define WLAN_PASS "CynthiaLivai740."
+#define WLAN_SSID "user"
+#define WLAN_PASS "mdp"
 
 WiFiClientSecure ssl_client;
 SMTPClient smtp(ssl_client);
@@ -57,31 +57,37 @@ void gererAcces(String status, String id_user) {
     msg.headers.add(rfc822_subject, "Accès coffre fort");
     msg.text.body("This is a plain text message.");
     if (status == "Autorisé") {
-    msg.html.body(
-        "<html><body>"
-        "<p>Bonjour,</p>"
-        "<p>Un accès au coffre-fort a été enregistré.</p>"
-        "<p>Détails: </p>"
-        "<p> ID de l'utilisateur :  " + id_user + " </p>"
-        "<p> Connexion le : " + date + " à " + heure + "</p>"
-        "<p>Cordialement,</p>"
-        "<p>Le système de surveillance du coffre-fort</p>"
-        "</body></html>"
-    );
-    } else{
-         msg.html.body(
-        "<html><body>"
-        "<p>Bonjour,</p>"
-        "<p>Une tentative d'accès au coffre-fort a été refusée.</p>"
-        "<p>Détails: </p>"
-        "<p> ID de l'utilisateur :  " + id_user + " </p>" 
-        "<p> Connexion le : " + date + " à " + heure + "</p>"
-        "<p>Cordialement,</p>"
-        "<p>Le système de surveillance du coffre-fort</p>"
-        "</body></html>"
-    );
-}
-    
+        msg.html.body(
+            "<html><body>"
+            "<p>Bonjour,</p>"
+            "<p>Un accès au coffre-fort a été enregistré.</p>"
+            "<p>Détails: </p>"
+            "<p> ID de l'utilisateur :  " +
+            id_user +
+            " </p>"
+            "<p> Connexion le : " +
+            date + " à " + heure +
+            "</p>"
+            "<p>Cordialement,</p>"
+            "<p>Le système de surveillance du coffre-fort</p>"
+            "</body></html>");
+    } else {
+        msg.html.body(
+            "<html><body>"
+            "<p>Bonjour,</p>"
+            "<p>Une tentative d'accès au coffre-fort a été refusée.</p>"
+            "<p>Détails: </p>"
+            "<p> ID de l'utilisateur :  " +
+            id_user +
+            " </p>"
+            "<p> Connexion le : " +
+            date + " à " + heure +
+            "</p>"
+            "<p>Cordialement,</p>"
+            "<p>Le système de surveillance du coffre-fort</p>"
+            "</body></html>");
+    }
+
     msg.timestamp = time(nullptr);
     smtp.send(msg);
 }
@@ -102,8 +108,8 @@ void setup() {
 }
 
 void loop() {
-   // if (i == 1) {
-     //   gererAcces("Autorisé");
-    //}
-    //i++;
+    if (i == 1) {
+        gererAcces("Autorisé", "1234");
+    }
+    i++;
 }

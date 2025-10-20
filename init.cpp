@@ -1,18 +1,28 @@
+#include <Arduino.h>
 #include <ESP32Servo.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
+#include <ReadyMail.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <Wire.h>
 
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-
+#include "time.h"
 // LCD
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Wifi
 #define WLAN_SSID "user"
 #define WLAN_PASS "mdp"
+
+// mail
+#define ENABLE_SMTP
+#define ENABLE_DEBUG
+
+WiFiClientSecure ssl_client;
+SMTPClient smtp(ssl_client);
 
 // Adafruit
 #define AIO_SERVER "io.adafruit.com"
@@ -24,9 +34,11 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define PIN_BUTTON 4
 
 // servomoteur
-#define PIN_SG90 22  // Broche de signal
+#define PIN_SG90 15  // Broche de signal
 Servo sg90;
 
+// buzzer
+#define BUZZER_PIN 16
 // led rgb
 const int PIN_RED = 19;
 const int PIN_GREEN = 13;
@@ -392,6 +404,97 @@ void stateWaitingCodeAuth() {
     }
 }
 
+void buzzerAndServo() {
+    // Rotation lente de 0° à 90°
+    for (int angle = 0; angle <= 90; angle++) {
+        Serial.println(angle);
+        sg90.write(angle);
+        delay(500);  // ralentit le mouvement
+        digitalWrite(BUZZER_PIN, HIGH);
+        delay(10);
+        digitalWrite(BUZZER_PIN, LOW);
+    }
+
+    // Facultatif : détacher pour arrêter complètement le servo
+    sg90.detach();
+}
+
+String getDateTime() {
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) {
+        return "Erreur récupération heure";
+    }
+    char buffer[64];
+    strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M:%S", &timeinfo);
+    return String(buffer);
+}
+
+void sendEmail(String accesStatus) {
+    if (!smtp.isConnected()) return;
+}
+
+// send mail
+void sendMailAcees(String status, String id_user) {
+    ssl_client.setInsecure();
+
+    auto statusCallback = [](SMTPStatus status) {
+        Serial.println(status.text);
+    };
+
+    smtp.connect("smtp.gmail.com", 465, statusCallback);
+
+    if (smtp.isConnected()) {
+        smtp.authenticate("t2224295@gmail.com", "pdao hstb zomy paii", readymail_auth_password);
+
+        configTime(0, 0, "pool.ntp.org");
+        while (time(nullptr) < 100000) delay(100);
+    }
+
+    String dateTime = getDateTime();
+    int espaceIndex = dateTime.indexOf(' ');
+    String date = dateTime.substring(0, espaceIndex);
+    String heure = dateTime.substring(espaceIndex + 1);
+
+    SMTPMessage msg;
+    msg.headers.add(rfc822_from, "coffre fort IoT <t2224295@gmail.com>");
+    msg.headers.add(rfc822_to, "Recipient <a22497752@gmail.com>");
+    msg.headers.add(rfc822_subject, "Accès coffre fort");
+    msg.text.body("This is a plain text message.");
+    if (status == "Autorisé") {
+        msg.html.body(
+            "<html><body>"
+            "<p>Bonjour,</p>"
+            "<p>Un accès au coffre-fort a été enregistré.</p>"
+            "<p>Détails: </p>"
+            "<p> ID de l'utilisateur :  " +
+            id_user +
+            " </p>"
+            "<p> Connexion le : " +
+            date + " à " + heure +
+            "</p>"
+            "<p>Cordialement,</p>"
+            "<p>Le système de surveillance du coffre-fort</p>"
+            "</body></html>");
+    } else {
+        msg.html.body(
+            "<html><body>"
+            "<p>Bonjour,</p>"
+            "<p>Une tentative d'accès au coffre-fort a été refusée.</p>"
+            "<p>Détails: </p>"
+            "<p> ID de l'utilisateur :  " +
+            id_user +
+            " </p>"
+            "<p> Connexion le : " +
+            date + " à " + heure +
+            "</p>"
+            "<p>Cordialement,</p>"
+            "<p>Le système de surveillance du coffre-fort</p>"
+            "</body></html>");
+    }
+
+    msg.timestamp = time(nullptr);
+    smtp.send(msg);
+}
 // state accès autorisé
 void stateAccessGranted() {
     Serial.println("Accès autorisé");
@@ -404,7 +507,7 @@ void stateAccessGranted() {
     ledAuthorize();
 
     // envoi mail et servomoteur
-    servomoteurOpen();
+    buzzerAndServo();
     delay(DISPLAY_DURATION);
     changeState(STATE_IDLE);
 }
@@ -420,6 +523,9 @@ void stateAccessDenied() {
     lcd.print("Reessayez...");
 
     ledDenied();
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(50);
+    digitalWrite(BUZZER_PIN, LOW);
     delay(DISPLAY_DURATION);
     changeState(STATE_IDLE);
 }
@@ -437,20 +543,6 @@ void stateError() {
     ledError();
     delay(DISPLAY_DURATION);
     changeState(STATE_IDLE);
-}
-
-void servomoteurOpen() {
-    // Position initiale
-    sg90.write(0);
-    delay(500);
-
-    // Rotation lente de 0° à 90°
-    for (int angle = 0; angle <= 90; angle++) {
-        sg90.write(angle);
-        delay(30);  // ralentit le mouvement (20–40 ms = fluide)
-    }
-
-    sg90.detach();
 }
 
 void setup() {
@@ -486,6 +578,7 @@ void setup() {
     // servomoteur
     sg90.setPeriodHertz(50);           // Fréquence PWM pour le SG90
     sg90.attach(PIN_SG90, 500, 2400);  // Impulsions min et max (µs)
+    pinMode(BUZZER_PIN, OUTPUT);       // Configure la broche en sortie
 }
 
 void loop() {
