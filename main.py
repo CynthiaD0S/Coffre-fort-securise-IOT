@@ -24,7 +24,7 @@ def charger_lignes_fichier_en_set(nom_fichier):
             for ligne in f:
                 lignes_set.add(ligne.strip()) # .strip() est crucial
         
-        print(f"Fichier {nom_fichier} chargé: {lignes_set}")
+        print(f"Fichier {nom_fichier} chargé")
         return lignes_set
         
     except FileNotFoundError:
